@@ -33,5 +33,7 @@ The main.sh script from your local machine creates a GCC VM that runs [Cloudflar
    * Cloudflare_api_email - Cloudflare user account email address
    * Zone_name - domain name; example: mydomain.com
    * Gcs_project_id - Google Cloud Project ID
+   * purge_data - 1 to enable purging data from bigquery once per day, 0 to disable
+   * purge_after_days - if purge_data=1, keep this many days records in bigtable
 8. Run the main orchestration script: 
    * ``` bash main.sh ```

@@ -66,6 +66,11 @@ if [ ! -e /root/.secondboot ]; then
     logger "provisioning logshare-cli command with cloudflare credentials"
     echo -e "START=\`date +%s --date '-11 minutes'\`\nEND=\`date +%s --date '-10 minutes'\`\n\n/root/go/bin/logshare-cli --api-key=$APIKEY --api-email=$APIEMAIL --zone-name=$ZONENAME --count=-1 --google-storage-bucket=$GSB --google-project-id=`jq -r .gcs_project_id /root/config.json` --start-time=\$START --end-time=\$END --fields `cat /root/fields.txt` --timestamp-format="rfc3339" >> /root/logshare-cli.log 2>&1" > /root/cron-script.sh
 
+    if [ `jq -r .purge_data /root/config.json` -eq 1 ]; then
+        logger "provisioning purge data cron"
+        echo -e "bq query --nouse_legacy_sql \"DELETE FROM \`jq -r .DATASET /root/GCS-To-Big-Query/config.json\`.\`jq -r .TABLE /root/GCS-To-Big-Query/config.json\` WHERE DATETIME(EdgeStartTimestamp) < DATETIME_SUB(DATETIME(CURRENT_DATE()), INTERVAL \`jq -r .purge_after_days /root/config.json\` DAY)\" >> /root/purge.log 2>&1" > /root/cron-purge-script.sh
+    fi
+
     # Create two Buckets - One for the Logs and one for the Staging Files
     logger "provisioning both gcs buckets"
     gsutil mb -c regional -l us-central1 "gs://$GSB"
@@ -91,6 +96,12 @@ if [ ! -e /root/.secondboot ]; then
 
     logger "provisioning cronjob"
     crontab -l > file; echo '* * * * * /root/cron-script.sh' >> file; crontab file
+
+    if [ `jq -r .purge_data /root/config.json` -eq 1 ]; then
+        chmod +x /root/cron-purge-script.sh
+        logger "provisioning purge cronjob"
+        crontab -l > file; echo '0 0 * * * /root/cron-purge-script.sh' >> file; crontab file
+    fi
 
 else
     logger "Second boot"
